@@ -9,17 +9,18 @@ import PostPage from './pages/PostPage.jsx'
 import WritePage from './pages/WritePage.jsx'
 import AuthPage from './pages/AuthPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
+import FavouritesPage from './pages/FavouritesPage.jsx'
 import { usePosts } from './hooks/usePosts.js'
 import { useAuth } from './hooks/useAuth.js'
 
 export default function App() {
   const { user, profile, loading: authLoading, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut, updateProfile } = useAuth()
-  const { posts, loading: postsLoading, error, addPost, updatePost, deletePost } = usePosts()
+  const { posts, loading: postsLoading, addPost, updatePost, deletePost } = usePosts()
 
-  const [page, setPage]             = useState('home')
-  const [activePost, setActivePost] = useState(null)
+  const [page, setPage]                 = useState('home')
+  const [activePost, setActivePost]     = useState(null)
   const [viewedProfile, setViewedProfile] = useState(null)
-  const [saving, setSaving]         = useState(false)
+  const [saving, setSaving]             = useState(false)
 
   const scrollTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
   const goTo = (p) => { setPage(p); scrollTop() }
@@ -28,7 +29,6 @@ export default function App() {
 
   const handleAuthorClick = async (userId) => {
     if (!userId) return
-    // Load that user's profile from Supabase
     const { supabase } = await import('./lib/supabase.js')
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
     if (data) { setViewedProfile(data); goTo('author') }
@@ -36,6 +36,7 @@ export default function App() {
 
   const handleSetPage = (p) => {
     if (p === 'write' && !user) { goTo('auth'); return }
+    if (p === 'favourites' && !user) { goTo('auth'); return }
     setActivePost(null)
     setViewedProfile(null)
     goTo(p)
@@ -63,20 +64,14 @@ export default function App() {
   }
 
   const handleDelete = async (id) => {
-    try {
-      await deletePost(id)
-      goTo('blog')
-      showToast('Note deleted')
-    } catch (e) {
-      showToast('⚠️ Error deleting')
-    }
+    try { await deletePost(id); goTo('blog'); showToast('Note deleted') }
+    catch { showToast('⚠️ Error deleting') }
   }
 
   const handleEdit = (post) => { setActivePost(post); goTo('edit') }
 
   const handleSignOut = async () => {
-    await signOut()
-    goTo('home')
+    await signOut(); goTo('home')
     showToast('Signed out — see you soon! 🌸')
   }
 
@@ -87,43 +82,27 @@ export default function App() {
 
   const navPage = ['write','edit'].includes(page) ? 'write'
     : ['post','blog'].includes(page) ? 'blog'
-    : page === 'profile' || page === 'author' ? 'profile'
-    : 'home'
+    : page
 
-  // Auth loading spinner
-  if (authLoading) {
-    return (
-      <>
-        <Petals />
-        <div style={{
-          minHeight: '100vh', display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center', gap: '1rem',
-        }}>
-          <div style={{ fontSize: '2.5rem', animation: 'spin 1.5s linear infinite' }}>🌸</div>
-          <p style={{ color: 'var(--ink-faint)', fontSize: '0.9rem', letterSpacing: '0.08em' }}>Loading...</p>
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        </div>
-      </>
-    )
-  }
+  if (authLoading) return (
+    <>
+      <Petals />
+      <div style={{ minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'1rem' }}>
+        <div style={{ fontSize:'2.5rem', animation:'spin 1.5s linear infinite' }}>🌸</div>
+        <p style={{ color:'var(--ink-faint)', fontSize:'0.9rem', letterSpacing:'0.08em' }}>Loading...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    </>
+  )
 
   return (
     <>
       <Petals />
-      <Nav
-        page={navPage}
-        setPage={handleSetPage}
-        user={user}
-        profile={profile}
-        onSignOut={handleSignOut}
-      />
+      <Nav page={navPage} setPage={handleSetPage} user={user} profile={profile} onSignOut={handleSignOut} />
 
-      {page === 'home' && (
-        <HomePage posts={posts} setPage={handleSetPage} onOpenPost={handleOpenPost} onAuthorClick={handleAuthorClick} user={user} />
-      )}
-      {page === 'blog' && (
-        <BlogPage posts={posts} onOpenPost={handleOpenPost} onAuthorClick={handleAuthorClick} />
-      )}
+      {page === 'home' && <HomePage posts={posts} setPage={handleSetPage} onOpenPost={handleOpenPost} onAuthorClick={handleAuthorClick} user={user} />}
+      {page === 'blog' && <BlogPage posts={posts} onOpenPost={handleOpenPost} onAuthorClick={handleAuthorClick} />}
+
       {page === 'post' && activePost && (
         <PostPage
           post={activePost}
@@ -132,8 +111,11 @@ export default function App() {
           onEdit={handleEdit}
           isOwner={user?.id === activePost.userId}
           onAuthorClick={handleAuthorClick}
+          user={user}
+          profile={profile}
         />
       )}
+
       {(page === 'write' || page === 'edit') && (
         <WritePage
           initialPost={page === 'edit' ? activePost : null}
@@ -142,34 +124,27 @@ export default function App() {
           saving={saving}
         />
       )}
+
       {page === 'auth' && (
         <AuthPage
           onSignInGoogle={signInWithGoogle}
           onSignInEmail={signInWithEmail}
-          onSignUpWithEmail={signUpWithEmail}
           onSignUpEmail={signUpWithEmail}
         />
       )}
+
       {page === 'profile' && profile && (
-        <ProfilePage
-          profile={profile}
-          isOwn={true}
-          onOpenPost={handleOpenPost}
-          onUpdateProfile={handleUpdateProfile}
-          onWrite={() => goTo('write')}
-        />
-      )}
-      {page === 'author' && viewedProfile && (
-        <ProfilePage
-          profile={viewedProfile}
-          isOwn={user?.id === viewedProfile.id}
-          onOpenPost={handleOpenPost}
-          onUpdateProfile={handleUpdateProfile}
-          onWrite={() => goTo('write')}
-        />
+        <ProfilePage profile={profile} isOwn={true} onOpenPost={handleOpenPost} onUpdateProfile={handleUpdateProfile} onWrite={() => goTo('write')} />
       )}
 
-      {/* Redirect to home after login */}
+      {page === 'author' && viewedProfile && (
+        <ProfilePage profile={viewedProfile} isOwn={user?.id === viewedProfile.id} onOpenPost={handleOpenPost} onUpdateProfile={handleUpdateProfile} onWrite={() => goTo('write')} />
+      )}
+
+      {page === 'favourites' && user && (
+        <FavouritesPage user={user} onOpenPost={handleOpenPost} onAuthorClick={handleAuthorClick} />
+      )}
+
       {user && page === 'auth' && (() => { goTo('home'); return null })()}
 
       <Footer />

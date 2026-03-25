@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react'
 
 export default function Nav({ page, setPage, user, profile, onSignOut }) {
@@ -6,8 +7,8 @@ export default function Nav({ page, setPage, user, profile, onSignOut }) {
   return (
     <nav className="nav">
       <button className="nav-logo" onClick={() => setPage('home')}>
-         <span className="logo-kanji">ペマ</span>
-        Wabisabi Notes
+      <span className="logo-kanji">ペマ</span>
+      Wabisabi Notes
       </button>
 
       <ul className="nav-links">
@@ -22,6 +23,7 @@ export default function Nav({ page, setPage, user, profile, onSignOut }) {
                 onClick={() => setPage('write')}
               >Write</button>
             </li>
+
             {/* Avatar dropdown */}
             <li style={{ position: 'relative' }}>
               <button
@@ -38,17 +40,17 @@ export default function Nav({ page, setPage, user, profile, onSignOut }) {
 
               {menuOpen && (
                 <div
+                  onMouseLeave={() => setMenuOpen(false)}
                   style={{
                     position: 'absolute', right: 0, top: '110%',
                     background: 'rgba(255,255,255,0.97)',
                     border: '1px solid var(--border)',
                     borderRadius: 'var(--radius-sm)',
                     boxShadow: 'var(--shadow-hover)',
-                    minWidth: 180, zIndex: 200,
-                    overflow: 'hidden',
+                    minWidth: 190, zIndex: 200, overflow: 'hidden',
                   }}
-                  onMouseLeave={() => setMenuOpen(false)}
                 >
+                  {/* User info */}
                   <div style={{ padding: '0.9rem 1rem', borderBottom: '1px solid var(--border)' }}>
                     <p style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--ink)', marginBottom: '0.1rem' }}>
                       {profile?.full_name || 'Writer'}
@@ -57,27 +59,46 @@ export default function Nav({ page, setPage, user, profile, onSignOut }) {
                       @{profile?.username}
                     </p>
                   </div>
+
                   {[
-                    { label: '🌸 My Profile', action: () => { setPage('profile'); setMenuOpen(false) } },
-                    { label: '✏️ Write note', action: () => { setPage('write'); setMenuOpen(false) } },
-                    { label: '↩ Sign out', action: () => { onSignOut(); setMenuOpen(false) }, danger: true },
+                    { label: '🌸 My Profile',    action: 'profile' },
+                    { label: '🔖 Favourites',     action: 'favourites' },
+                    { label: '✏️ Write note',     action: 'write' },
                   ].map(item => (
                     <button
                       key={item.label}
-                      onClick={item.action}
+                      onClick={() => { setPage(item.action); setMenuOpen(false) }}
                       style={{
                         width: '100%', textAlign: 'left',
                         padding: '0.7rem 1rem',
                         background: 'none', border: 'none',
                         fontSize: '0.85rem', cursor: 'pointer',
                         fontFamily: 'var(--font-body)',
-                        color: item.danger ? '#c0392b' : 'var(--ink-soft)',
+                        color: 'var(--ink-soft)',
                         transition: 'background var(--transition)',
+                        display: 'block',
                       }}
                       onMouseEnter={e => e.currentTarget.style.background = 'var(--mist)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'none'}
                     >{item.label}</button>
                   ))}
+
+                  <div style={{ borderTop: '1px solid var(--border)' }}>
+                    <button
+                      onClick={() => { onSignOut(); setMenuOpen(false) }}
+                      style={{
+                        width: '100%', textAlign: 'left',
+                        padding: '0.7rem 1rem',
+                        background: 'none', border: 'none',
+                        fontSize: '0.85rem', cursor: 'pointer',
+                        fontFamily: 'var(--font-body)',
+                        color: '#c0392b',
+                        transition: 'background var(--transition)',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--mist)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    >↩ Sign out</button>
+                  </div>
                 </div>
               )}
             </li>

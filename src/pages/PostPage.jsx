@@ -1,4 +1,8 @@
 import React, { useState } from 'react'
+import { usePostInteractions } from '../hooks/usePostInteractions.js'
+import { useComments } from '../hooks/useComments.js'
+import InteractionBar from '../components/InteractionBar.jsx'
+import CommentsSection from '../components/CommentsSection.jsx'
 
 function renderContent(text) {
   if (!text) return null
@@ -35,8 +39,29 @@ function fmt(text) {
   )
 }
 
-export default function PostPage({ post, onBack, onDelete, onEdit, isOwner, onAuthorClick }) {
+export default function PostPage({ post, onBack, onDelete, onEdit, isOwner, onAuthorClick, user, profile }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
+
+  const {
+    likes, hasLiked, hasFaved, views,
+    toggleLike, toggleFav,
+  } = usePostInteractions(post.id, user?.id)
+
+  const {
+    threaded, loading: commentsLoading,
+    addComment, deleteComment,
+  } = useComments(post.id)
+
+  const handleAddComment = async (text) => {
+    await addComment(text, user.id, profile)
+  }
+
+  const handleReply = async (text, parentId) => {
+    await addComment(text, user.id, profile, parentId)
+  }
+
+  // Pass profile into user object for CommentsSection
+  const userWithProfile = user ? { ...user, profile } : null
 
   return (
     <main className="page">
@@ -66,25 +91,61 @@ export default function PostPage({ post, onBack, onDelete, onEdit, isOwner, onAu
             )}
           </div>
           <div className="post-divider" />
+
+          {/* Interaction bar under header */}
+          <div style={{ marginTop: '0.5rem' }}>
+            <InteractionBar
+              likes={likes} hasLiked={hasLiked}
+              hasFaved={hasFaved} views={views}
+              onLike={toggleLike} onFav={toggleFav}
+              user={user}
+            />
+          </div>
         </header>
 
         <article className="post-content">{renderContent(post.content)}</article>
 
-        {/* Only show edit/delete to the post owner */}
-        {isOwner && (
-          <div className="post-actions">
-            <button className="btn-edit" onClick={() => onEdit(post)}>✏️ Edit</button>
-            {confirmDelete ? (
-              <>
-                <span style={{ fontSize: '0.8rem', color: 'var(--ink-faint)', alignSelf: 'center' }}>Are you sure?</span>
-                <button className="btn-edit" onClick={() => setConfirmDelete(false)}>Cancel</button>
-                <button className="btn-delete" onClick={() => onDelete(post.id)}>Yes, delete</button>
-              </>
-            ) : (
-              <button className="btn-delete" onClick={() => setConfirmDelete(true)}>🗑 Delete</button>
-            )}
-          </div>
-        )}
+        {/* Bottom interaction bar */}
+        <div style={{
+          marginTop: '2.5rem', paddingTop: '1.5rem',
+          borderTop: '1px solid var(--border)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          flexWrap: 'wrap', gap: '1rem',
+        }}>
+          <InteractionBar
+            likes={likes} hasLiked={hasLiked}
+            hasFaved={hasFaved} views={views}
+            onLike={toggleLike} onFav={toggleFav}
+            user={user}
+          />
+
+          {/* Owner actions */}
+          {isOwner && (
+            <div style={{ display: 'flex', gap: '0.6rem' }}>
+              <button className="btn-edit" onClick={() => onEdit(post)}>✏️ Edit</button>
+              {confirmDelete ? (
+                <>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--ink-faint)', alignSelf: 'center' }}>Sure?</span>
+                  <button className="btn-edit" onClick={() => setConfirmDelete(false)}>Cancel</button>
+                  <button className="btn-delete" onClick={() => onDelete(post.id)}>Yes, delete</button>
+                </>
+              ) : (
+                <button className="btn-delete" onClick={() => setConfirmDelete(true)}>🗑 Delete</button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Comments */}
+        <CommentsSection
+          threaded={threaded}
+          loading={commentsLoading}
+          user={userWithProfile}
+          onAdd={handleAddComment}
+          onDelete={(id) => deleteComment(id, user?.id)}
+          onReply={handleReply}
+        />
+
       </div>
     </main>
   )
